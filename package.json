@@ -1,6 +1,6 @@
 {
   "name": "@dev_apus/supaguard",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "100% Security & Multi-Layer Developer Defense Suite for Repositories and Codebases",
   "bin": {
     "supaguard": "bin/supaguard.js"

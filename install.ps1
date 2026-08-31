@@ -6,7 +6,7 @@
 
 $ErrorActionPreference = "Stop"
 
-Write-Host "`n🛡️⚡ Installing SupaGuard for Windows...`n" -ForegroundColor Cyan
+Write-Host "`nInstalling SupaGuard for Windows...`n" -ForegroundColor Cyan
 
 # 1. Check Python
 $pyCmd = $null
@@ -55,6 +55,6 @@ if ($userPath -notlike "*$binDir*") {
     Write-Host "Added $binDir to User PATH." -ForegroundColor Green
 }
 
-Write-Host "`n✓ SupaGuard successfully installed to: $binDir\supaguard.cmd`n" -ForegroundColor Green
+Write-Host "`n[OK] SupaGuard successfully installed to: $binDir\supaguard.cmd`n" -ForegroundColor Green
 Write-Host "To scan your project:  supaguard scan ." -ForegroundColor Cyan
 Write-Host "To check engines:      supaguard doctor`n" -ForegroundColor Cyan

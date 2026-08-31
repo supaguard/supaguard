@@ -44,7 +44,7 @@ def decode_hex_escapes(content: str):
 
 def explain_file(filepath: Path):
     if not filepath.exists() or not filepath.is_file():
-        print(f"\033[91mFile '{filepath}' does not exist.\033[0m")
+        print(f"\033[91m[ERROR] File '{filepath}' does not exist.\033[0m")
         return
 
     print(f"\n\033[1;96m==> SupaGuard Semantic Payload Explainer & Deobfuscator\033[0m")
@@ -58,7 +58,7 @@ def explain_file(filepath: Path):
     all_decoded = b64_results + char_results + hex_results
 
     if not all_decoded:
-        print("\033[92m✓ No hidden/obfuscated binary or base64 execution payloads detected in file.\033[0m\n")
+        print("\033[92m[CLEAN] No hidden/obfuscated binary or base64 execution payloads detected in file.\033[0m\n")
         return
 
     print(f"Discovered \033[1;91m{len(all_decoded)}\033[0m obfuscated payload block(s):\n")
@@ -81,5 +81,5 @@ def explain_file(filepath: Path):
         if intent:
             print(f"  \033[1;91mSemantic Analysis / Intent:\033[0m")
             for i in intent:
-                print(f"    • {i}")
+                print(f"    - {i}")
         print()

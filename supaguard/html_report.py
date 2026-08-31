@@ -91,9 +91,6 @@ def generate_html_report(target_path: str, findings: list, files_scanned: int, e
             align-items: center;
             gap: 12px;
         }}
-        .shield-icon {{
-            font-size: 32px;
-        }}
         h1 {{ margin: 0; font-size: 24px; color: #ffffff; letter-spacing: -0.5px; }}
         .tagline {{ font-size: 11px; color: var(--lightning); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }}
         .header-meta {{ color: var(--text-muted); font-size: 13px; margin-top: 4px; }}
@@ -172,7 +169,6 @@ def generate_html_report(target_path: str, findings: list, files_scanned: int, e
     <div class="container">
         <header>
             <div class="brand">
-                <div class="shield-icon">🛡️⚡</div>
                 <div>
                     <h1>SUPAGUARD</h1>
                     <div class="tagline">100% Security Suite</div>
@@ -214,5 +210,5 @@ def generate_html_report(target_path: str, findings: list, files_scanned: int, e
 </html>
 """
     output_file.write_text(html_content, encoding="utf-8")
-    print(f"\n\033[1;92m✓ SupaGuard HTML Security Report Generated:\033[0m {output_file}")
+    print(f"\n\033[1;92m[OK] SupaGuard HTML Security Report Generated:\033[0m {output_file}")
     return output_file

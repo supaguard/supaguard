@@ -27,7 +27,7 @@ if command -v supaguard >/dev/null 2>&1; then
         exit 1
     fi
 elif command -v npx >/dev/null 2>&1; then
-    npx supaguard hook check-staged
+    npx @dev_apus/supaguard hook check-staged
     EXIT_CODE=$?
     if [ $EXIT_CODE -ne 0 ]; then
         exit 1
@@ -52,7 +52,7 @@ def get_git_repos(target_dir: Path, recurse: bool = False):
 def install_hooks(target_dir: Path, recurse: bool = False):
     repos = get_git_repos(target_dir, recurse)
     if not repos:
-        print(f"\033[93mNo Git repositories found under '{target_dir}'.\033[0m")
+        print(f"\033[93m[WARN] No Git repositories found under '{target_dir}'.\033[0m")
         return
 
     count = 0
@@ -65,9 +65,9 @@ def install_hooks(target_dir: Path, recurse: bool = False):
         for hook_file in [pre_commit, pre_push]:
             hook_file.write_text(HOOK_SCRIPT_CONTENT)
             hook_file.chmod(0o755)
-        print(f"\033[92m✓ Installed SupaGuard Zero-Leak hooks:\033[0m {repo.name} ({hooks_dir})")
+        print(f"\033[92m[OK] Installed Zero-Leak hooks:\033[0m {repo.name} ({hooks_dir})")
         count += 1
-    print(f"\n\033[1;92mSuccessfully protected {count} repository(ies) with SupaGuard pre-commit hooks!\033[0m\n")
+    print(f"\n\033[1;92mSuccessfully protected {count} repository(ies) with SupaGuard pre-commit hooks.\033[0m\n")
 
 def uninstall_hooks(target_dir: Path, recurse: bool = False):
     repos = get_git_repos(target_dir, recurse)
@@ -79,11 +79,10 @@ def uninstall_hooks(target_dir: Path, recurse: bool = False):
             if h_file.exists() and ("SupaGuard Zero-Leak Git Hook" in h_file.read_text(errors="ignore") or "Antivirus Zero-Leak" in h_file.read_text(errors="ignore")):
                 h_file.unlink()
                 count += 1
-        print(f"\033[93m• Removed hooks from:\033[0m {repo.name}")
+        print(f"\033[93m- Removed hooks from:\033[0m {repo.name}")
     print(f"\n\033[1;93mUninstalled hooks from {count} file(s).\033[0m\n")
 
 def check_staged_files():
-    """Runs fast heuristic scan only on git staged files."""
     try:
         proc = subprocess.run(["git", "diff", "--cached", "--name-only", "--diff-filter=ACM"],
                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)

@@ -64,7 +64,7 @@ def banner():
    ╚════██║██║   ██║██╔═══╝ ██╔══██║██║   ██║██║   ██║██╔══██║██╔══██╗██║  ██║
    ███████║╚██████╔╝██║     ██║  ██║╚██████╔╝╚██████╔╝██║  ██║██║  ██║██████╔╝
    ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ {Color.RESET}
-   {Color.WHITE}{Color.BOLD}100% SECURITY & MULTI-LAYER DEVELOPER DEFENSE SUITE (CROSS-PLATFORM){Color.RESET}
+   {Color.WHITE}{Color.BOLD}100% SECURITY & MULTI-LAYER DEVELOPER DEFENSE SUITE{Color.RESET}
 """)
 
 IGNORE_DIRS = {
@@ -78,19 +78,15 @@ IGNORE_EXTS = {
 }
 
 def find_binary(name: str):
-    """Locates a binary across macOS, Linux, and Windows."""
-    # Check standard PATH
     bin_path = shutil.which(name)
     if bin_path:
         return bin_path
     
-    # Check Windows .exe extension
     if IS_WIN and not name.endswith(".exe"):
         bin_path = shutil.which(f"{name}.exe")
         if bin_path:
             return bin_path
 
-    # Common Unix fallback paths
     common_unix_paths = [
         f"/opt/local/bin/{name}",
         f"/usr/local/bin/{name}",
@@ -260,31 +256,31 @@ def cmd_scan(args):
     clam_findings, clam_installed = run_clamav_scan(target)
     if clam_installed:
         all_findings.extend(clam_findings)
-        print(f"  {Color.GREEN}✓{Color.RESET} ClamAV signature scan completed.")
+        print(f"  {Color.GREEN}[OK]{Color.RESET} ClamAV signature scan completed.")
     else:
-        print(f"  {Color.DIM}ℹ ClamAV not installed (run 'supaguard doctor'){Color.RESET}")
+        print(f"  {Color.DIM}[INFO] ClamAV not installed (run 'supaguard doctor'){Color.RESET}")
 
     print(f"{Color.YELLOW}[Layer 3/5]{Color.RESET} Checking Trivy Secrets & Misconfiguration Scanner...")
     if not args.quick:
         trivy_findings, trivy_installed = run_trivy_scan(target)
         if trivy_installed:
             all_findings.extend(trivy_findings)
-            print(f"  {Color.GREEN}✓{Color.RESET} Trivy scan completed.")
+            print(f"  {Color.GREEN}[OK]{Color.RESET} Trivy scan completed.")
         else:
-            print(f"  {Color.DIM}ℹ Trivy not installed (run 'supaguard doctor'){Color.RESET}")
+            print(f"  {Color.DIM}[INFO] Trivy not installed (run 'supaguard doctor'){Color.RESET}")
     else:
-        print(f"  {Color.DIM}ℹ Skipped in quick mode{Color.RESET}")
+        print(f"  {Color.DIM}[INFO] Skipped in quick mode{Color.RESET}")
 
     print(f"{Color.YELLOW}[Layer 4/5]{Color.RESET} Checking Semgrep Static Security & Backdoor Analyzer...")
     if not args.quick:
         semgrep_findings, semgrep_installed = run_semgrep_scan(target)
         if semgrep_installed:
             all_findings.extend(semgrep_findings)
-            print(f"  {Color.GREEN}✓{Color.RESET} Semgrep code analysis completed.")
+            print(f"  {Color.GREEN}[OK]{Color.RESET} Semgrep code analysis completed.")
         else:
-            print(f"  {Color.DIM}ℹ Semgrep not installed (run 'supaguard doctor'){Color.RESET}")
+            print(f"  {Color.DIM}[INFO] Semgrep not installed (run 'supaguard doctor'){Color.RESET}")
     else:
-        print(f"  {Color.DIM}ℹ Skipped in quick mode{Color.RESET}")
+        print(f"  {Color.DIM}[INFO] Skipped in quick mode{Color.RESET}")
 
     print(f"{Color.YELLOW}[Layer 5/5]{Color.RESET} Checking Lockfile Integrity & Supply-Chain Sentinel...")
     for lock in ["pnpm-lock.yaml", "yarn.lock", "package-lock.json", "bun.lock"]:
@@ -333,9 +329,9 @@ def cmd_scan(args):
             for q_item in quarantine_list:
                 success, res = quarantine_file(q_item["file"], q_item)
                 if success:
-                    print(f"  {Color.GREEN}✓ QUARANTINED:{Color.RESET} {q_item['file']} -> {res}")
+                    print(f"  {Color.GREEN}[QUARANTINED]:{Color.RESET} {q_item['file']} -> {res}")
                 else:
-                    print(f"  {Color.RED}✗ Failed to quarantine:{Color.RESET} {q_item['file']} ({res})")
+                    print(f"  {Color.RED}[FAILED]:{Color.RESET} {q_item['file']} ({res})")
 
     if getattr(args, "html", False):
         report_file = Path.cwd() / f"supaguard_report_{int(time.time())}.html"
@@ -360,7 +356,7 @@ def cmd_sweep(args):
 
     print(f"Found {len(repos)} repository(ies) to audit:\n")
     for r in repos:
-        print(f" • {Color.BOLD}{r.name}{Color.RESET} ({r})")
+        print(f" - {Color.BOLD}{r.name}{Color.RESET} ({r})")
     print(f"\n{'=' * 75}")
 
     for r in repos:
@@ -384,9 +380,9 @@ def cmd_watch(args):
                     os.kill(pid, signal.SIGTERM)
                 PID_FILE.unlink(missing_ok=True)
                 STATUS_FILE.unlink(missing_ok=True)
-                print(f"{Color.GREEN}✓ Real-time active shield (PID {pid}) stopped.{Color.RESET}")
+                print(f"{Color.GREEN}[OK] Real-time active shield (PID {pid}) stopped.{Color.RESET}")
             except Exception as e:
-                print(f"{Color.RED}Failed to stop shield: {e}{Color.RESET}")
+                print(f"{Color.RED}[ERROR] Failed to stop shield: {e}{Color.RESET}")
                 PID_FILE.unlink(missing_ok=True)
         else:
             print(f"{Color.YELLOW}No active shield daemon found.{Color.RESET}")
@@ -401,23 +397,22 @@ def cmd_watch(args):
                     status_data = json.loads(STATUS_FILE.read_text())
                 except Exception:
                     pass
-            print(f"\n{Color.GREEN}{Color.BOLD}● SupaGuard Real-Time Active Shield Active{Color.RESET}")
+            print(f"\n{Color.GREEN}{Color.BOLD}[ACTIVE] SupaGuard Real-Time Active Shield{Color.RESET}")
             print(f"  PID:         {pid}")
             print(f"  Watching:    {status_data.get('watch_dir', 'Unknown')}")
             print(f"  Started:     {status_data.get('started_at', 'Unknown')}")
             print(f"  Logs:        {SHIELD_LOG_FILE}\n")
         else:
-            print(f"\n{Color.RED}○ SupaGuard Active Shield Inactive{Color.RESET}\n")
+            print(f"\n{Color.RED}[INACTIVE] SupaGuard Active Shield{Color.RESET}\n")
         return
 
     if args.daemon:
         if IS_WIN:
-            # Spawn detached process on Windows
             proc = subprocess.Popen([sys.executable, __file__, "watch", str(watch_path)],
                                     creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP,
                                     stdout=open(SHIELD_LOG_FILE, "a"), stderr=open(SHIELD_LOG_FILE, "a"))
             pid = proc.pid
-            print(f"{Color.GREEN}✓ SupaGuard real-time shield running in background on Windows (PID {pid}).{Color.RESET}")
+            print(f"{Color.GREEN}[OK] SupaGuard real-time shield running in background on Windows (PID {pid}).{Color.RESET}")
             PID_FILE.write_text(str(pid))
             STATUS_FILE.write_text(json.dumps({
                 "pid": pid,
@@ -426,10 +421,9 @@ def cmd_watch(args):
             }))
             sys.exit(0)
         else:
-            # Fork daemon on Unix
             pid = os.fork()
             if pid > 0:
-                print(f"{Color.GREEN}✓ SupaGuard real-time shield running in background (PID {pid}).{Color.RESET}")
+                print(f"{Color.GREEN}[OK] SupaGuard real-time shield running in background (PID {pid}).{Color.RESET}")
                 print(f"  Watching: {watch_path}")
                 print(f"  Logs:     {SHIELD_LOG_FILE}")
                 PID_FILE.write_text(str(pid))
@@ -442,7 +436,7 @@ def cmd_watch(args):
             else:
                 os.setsid()
 
-    print(f"\n{Color.BOLD}{Color.GREEN}🛡️⚡ SupaGuard Real-Time Shield Active{Color.RESET}")
+    print(f"\n{Color.BOLD}{Color.GREEN}[SHIELD ACTIVE] SupaGuard Real-Time Monitoring{Color.RESET}")
     print(f"  Watching Directory: {watch_path}")
     print(f"  Press Ctrl+C to exit interactive shield.\n")
 
@@ -475,7 +469,7 @@ def cmd_watch(args):
                     if findings:
                         print(f"{Color.BG_RED}{Color.WHITE}{Color.BOLD} BLOCKED / THREAT DETECTED {Color.RESET} {Color.RED}Threat on {fpath.name}{Color.RESET}")
                         for item in findings:
-                            print(f"   ↳ [{item['severity']}] {item['name']}")
+                            print(f"   -> [{item['severity']}] {item['name']}")
                     file_snapshot[fpath_str] = mtime
             file_snapshot = current_snap
     except KeyboardInterrupt:
@@ -505,8 +499,8 @@ def cmd_doctor(args):
     all_good = True
     for t in tools:
         is_ok = t["check"]()
-        status = f"{Color.GREEN}INSTALLED ✓{Color.RESET}" if is_ok else f"{Color.RED}MISSING ✗{Color.RESET}"
-        print(f" • {t['name']:<35} : {status}")
+        status = f"{Color.GREEN}[INSTALLED]{Color.RESET}" if is_ok else f"{Color.RED}[MISSING]{Color.RESET}"
+        print(f" - {t['name']:<35} : {status}")
         if not is_ok:
             all_good = False
     print(f"\n{Color.BOLD}Quarantine Directory:{Color.RESET} {QUARANTINE_DIR}")
@@ -536,7 +530,7 @@ def cmd_quarantine(args):
         for item in QUARANTINE_DIR.iterdir():
             if item.is_file():
                 item.unlink()
-        print(f"{Color.GREEN}✓ Quarantine storage purged.{Color.RESET}\n")
+        print(f"{Color.GREEN}[OK] Quarantine storage purged.{Color.RESET}\n")
 
 def main():
     banner()

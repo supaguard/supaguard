@@ -46,7 +46,6 @@ def levenshtein_distance(s1, s2):
     return distances[-1]
 
 def inspect_npm_package(package_spec: str):
-    """Inspects npm registry metadata for an npm package."""
     pkg_name = package_spec.split("@")[0].strip()
     target_version = package_spec.split("@")[1].strip() if "@" in package_spec and not package_spec.startswith("@") else None
     
@@ -56,7 +55,7 @@ def inspect_npm_package(package_spec: str):
         if len(parts) > 1:
             target_version = parts[1]
 
-    print(f"\033[94m🔍 SupaGuard Supply Chain Registry Audit:\033[0m \033[1m{pkg_name}\033[0m ...")
+    print(f"\033[94m[AUDIT] Supply Chain Registry Check:\033[0m \033[1m{pkg_name}\033[0m ...")
     
     url = f"https://registry.npmjs.org/{pkg_name}"
     req = urllib.request.Request(url, headers={"User-Agent": "SupaGuard-Sentinel/1.0"})
@@ -108,7 +107,7 @@ def inspect_npm_package(package_spec: str):
                     "detail": f"Package name '{pkg_name}' is strikingly similar to popular package '{pop}' (Distance: {dist})."
                 })
 
-    # 3. Check Suspicious Lifecycle Scripts (preinstall, postinstall, install)
+    # 3. Check Suspicious Lifecycle Scripts
     suspicious_hooks = ["preinstall", "install", "postinstall", "prepare"]
     for hook in suspicious_hooks:
         if hook in scripts:
@@ -154,7 +153,7 @@ def audit_lockfile(lockfile_path: Path):
 
 def safe_install_command(manager: str, packages: list):
     if not packages:
-        print("\033[91mError: No packages specified.\033[0m")
+        print("\033[91m[ERROR] No packages specified.\033[0m")
         return
 
     print(f"\n\033[1;96m==> SupaGuard Safe-Install Sentinel ({manager})\033[0m\n")
@@ -165,14 +164,14 @@ def safe_install_command(manager: str, packages: list):
             continue
         res = inspect_npm_package(pkg)
         if res.get("status") == "ERROR":
-            print(f"\033[93m⚠ {res['message']}\033[0m")
+            print(f"\033[93m[WARN] {res['message']}\033[0m")
             continue
 
         findings = res.get("findings", [])
         if not findings:
-            print(f"  \033[92m✓ {res['name']}@{res['version_checked']}:\033[0m Verified Clean on npm registry.")
+            print(f"  \033[92m[CLEAN] {res['name']}@{res['version_checked']}:\033[0m Verified on npm registry.")
         else:
-            print(f"  \033[91m✗ {res['name']}@{res['version_checked']}:\033[0m \033[1;91m{len(findings)} Risk(s) Flagged!\033[0m")
+            print(f"  \033[91m[FLAGGED] {res['name']}@{res['version_checked']}:\033[0m \033[1;91m{len(findings)} Risk(s) Flagged!\033[0m")
             for f in findings:
                 sev_color = "\033[1;41;97m" if f["severity"] == "CRITICAL" else "\033[1;91m"
                 print(f"     {sev_color} {f['severity']} \033[0m \033[1m{f['title']}\033[0m")
