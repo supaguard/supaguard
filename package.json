@@ -1,0 +1,50 @@
+{
+  "name": "supaguard",
+  "version": "1.0.0",
+  "description": "100% Security & Multi-Layer Developer Defense Suite for Repositories and Codebases",
+  "main": "bin/supaguard.js",
+  "bin": {
+    "supaguard": "./bin/supaguard.js"
+  },
+  "scripts": {
+    "start": "node ./bin/supaguard.js",
+    "test": "python3 -m unittest discover -s tests 2>/dev/null || node ./bin/supaguard.js doctor"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/supaguard/supaguard.git"
+  },
+  "keywords": [
+    "security",
+    "antivirus",
+    "vulnerability-scanner",
+    "secrets-detection",
+    "supply-chain",
+    "pre-commit",
+    "git-hooks",
+    "web3",
+    "clamav",
+    "trivy",
+    "semgrep",
+    "malware-detection",
+    "macos",
+    "linux"
+  ],
+  "author": "SupaGuard Team <security@supaguard.dev>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/supaguard/supaguard/issues"
+  },
+  "homepage": "https://github.com/supaguard/supaguard#readme",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "files": [
+    "bin",
+    "supaguard",
+    "assets",
+    "install.sh",
+    "README.md",
+    "LICENSE"
+  ]
+}

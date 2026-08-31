@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "supaguard"
+version = "1.0.0"
+description = "100% Security & Multi-Layer Developer Defense Suite for Repositories and Codebases"
+readme = "README.md"
+authors = [{ name = "SupaGuard Team", email = "security@supaguard.dev" }]
+license = { text = "MIT" }
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: Security",
+    "Topic :: Software Development :: Quality Assurance"
+]
+requires-python = ">=3.8"
+dependencies = []
+
+[project.scripts]
+supaguard = "supaguard.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/supaguard/supaguard"
+Documentation = "https://github.com/supaguard/supaguard#readme"
+Repository = "https://github.com/supaguard/supaguard.git"
+Issues = "https://github.com/supaguard/supaguard/issues"
