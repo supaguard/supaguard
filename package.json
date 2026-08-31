@@ -1,5 +1,5 @@
 {
-  "name": "@apus/supaguard",
+  "name": "@dev_apus/supaguard",
   "version": "1.0.0",
   "description": "100% Security & Multi-Layer Developer Defense Suite for Repositories and Codebases",
   "bin": {
@@ -38,6 +38,9 @@
   "homepage": "https://github.com/supaguard/supaguard#readme",
   "engines": {
     "node": ">=14.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "files": [
     "bin",
