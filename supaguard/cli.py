@@ -1,6 +1,6 @@
 """
 SupaGuard CLI Main Entrypoint & Command Dispatcher
-Unified Antivirus, Active Shield, Supply-Chain Sentinel & Secret Blocker.
+Cross-Platform: macOS, Linux, and Windows.
 """
 
 import sys
@@ -16,7 +16,7 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
-# Setup paths
+# Paths
 APP_DIR = Path.home() / ".supaguard"
 LOGS_DIR = APP_DIR / "logs"
 QUARANTINE_DIR = APP_DIR / "quarantine"
@@ -37,7 +37,10 @@ from supaguard import web3_guard
 from supaguard import html_report
 from supaguard import deobfuscator
 
-# ANSI Colors
+IS_WIN = sys.platform == "win32"
+IS_MAC = sys.platform == "darwin"
+IS_LINUX = sys.platform.startswith("linux")
+
 class Color:
     RESET = "\033[0m"
     BOLD = "\033[1m"
@@ -61,7 +64,7 @@ def banner():
    ╚════██║██║   ██║██╔═══╝ ██╔══██║██║   ██║██║   ██║██╔══██║██╔══██╗██║  ██║
    ███████║╚██████╔╝██║     ██║  ██║╚██████╔╝╚██████╔╝██║  ██║██║  ██║██████╔╝
    ╚══════╝ ╚═════╝ ╚═╝     ╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ {Color.RESET}
-   {Color.WHITE}{Color.BOLD}100% SECURITY & MULTI-LAYER DEVELOPER DEFENSE SUITE v1.0{Color.RESET}
+   {Color.WHITE}{Color.BOLD}100% SECURITY & MULTI-LAYER DEVELOPER DEFENSE SUITE (CROSS-PLATFORM){Color.RESET}
 """)
 
 IGNORE_DIRS = {
@@ -74,10 +77,35 @@ IGNORE_EXTS = {
     ".map", ".lock", ".resolved"
 }
 
+def find_binary(name: str):
+    """Locates a binary across macOS, Linux, and Windows."""
+    # Check standard PATH
+    bin_path = shutil.which(name)
+    if bin_path:
+        return bin_path
+    
+    # Check Windows .exe extension
+    if IS_WIN and not name.endswith(".exe"):
+        bin_path = shutil.which(f"{name}.exe")
+        if bin_path:
+            return bin_path
+
+    # Common Unix fallback paths
+    common_unix_paths = [
+        f"/opt/local/bin/{name}",
+        f"/usr/local/bin/{name}",
+        f"/usr/bin/{name}",
+        str(Path.home() / ".local" / "bin" / name)
+    ]
+    for p in common_unix_paths:
+        if os.path.exists(p):
+            return p
+    return None
+
 def run_clamav_scan(target_path: Path):
     findings = []
-    clam_bin = shutil.which("clamdscan") or shutil.which("clamscan") or "/opt/local/bin/clamscan"
-    if not os.path.exists(clam_bin):
+    clam_bin = find_binary("clamdscan") or find_binary("clamscan")
+    if not clam_bin:
         return findings, False
     try:
         cmd = [clam_bin, "--infected", "--no-summary", "-r", str(target_path)]
@@ -103,8 +131,8 @@ def run_clamav_scan(target_path: Path):
 
 def run_trivy_scan(target_path: Path):
     findings = []
-    trivy_bin = shutil.which("trivy") or "/opt/local/bin/trivy"
-    if not os.path.exists(trivy_bin):
+    trivy_bin = find_binary("trivy")
+    if not trivy_bin:
         return findings, False
     try:
         cmd = [trivy_bin, "fs", "--scanners", "secret,misconfig", "--format", "json", "--quiet", str(target_path)]
@@ -144,7 +172,7 @@ def run_trivy_scan(target_path: Path):
 
 def run_semgrep_scan(target_path: Path):
     findings = []
-    semgrep_bin = shutil.which("semgrep") or shutil.which("pysemgrep")
+    semgrep_bin = find_binary("semgrep") or find_binary("pysemgrep")
     if not semgrep_bin:
         return findings, False
     try:
@@ -188,7 +216,10 @@ def quarantine_file(file_path_str: str, threat_info: dict):
     try:
         shutil.move(str(src), str(dest))
         meta_dest.write_text(json.dumps(metadata, indent=2))
-        os.chmod(str(dest), 0o600)
+        try:
+            os.chmod(str(dest), 0o600)
+        except Exception:
+            pass
         return True, str(dest)
     except Exception as e:
         return False, str(e)
@@ -347,7 +378,10 @@ def cmd_watch(args):
         if PID_FILE.exists():
             try:
                 pid = int(PID_FILE.read_text().strip())
-                os.kill(pid, signal.SIGTERM)
+                if IS_WIN:
+                    subprocess.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True)
+                else:
+                    os.kill(pid, signal.SIGTERM)
                 PID_FILE.unlink(missing_ok=True)
                 STATUS_FILE.unlink(missing_ok=True)
                 print(f"{Color.GREEN}✓ Real-time active shield (PID {pid}) stopped.{Color.RESET}")
@@ -377,11 +411,13 @@ def cmd_watch(args):
         return
 
     if args.daemon:
-        pid = os.fork()
-        if pid > 0:
-            print(f"{Color.GREEN}✓ SupaGuard real-time shield running in background (PID {pid}).{Color.RESET}")
-            print(f"  Watching: {watch_path}")
-            print(f"  Logs:     {SHIELD_LOG_FILE}")
+        if IS_WIN:
+            # Spawn detached process on Windows
+            proc = subprocess.Popen([sys.executable, __file__, "watch", str(watch_path)],
+                                    creationflags=subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP,
+                                    stdout=open(SHIELD_LOG_FILE, "a"), stderr=open(SHIELD_LOG_FILE, "a"))
+            pid = proc.pid
+            print(f"{Color.GREEN}✓ SupaGuard real-time shield running in background on Windows (PID {pid}).{Color.RESET}")
             PID_FILE.write_text(str(pid))
             STATUS_FILE.write_text(json.dumps({
                 "pid": pid,
@@ -390,7 +426,21 @@ def cmd_watch(args):
             }))
             sys.exit(0)
         else:
-            os.setsid()
+            # Fork daemon on Unix
+            pid = os.fork()
+            if pid > 0:
+                print(f"{Color.GREEN}✓ SupaGuard real-time shield running in background (PID {pid}).{Color.RESET}")
+                print(f"  Watching: {watch_path}")
+                print(f"  Logs:     {SHIELD_LOG_FILE}")
+                PID_FILE.write_text(str(pid))
+                STATUS_FILE.write_text(json.dumps({
+                    "pid": pid,
+                    "watch_dir": str(watch_path),
+                    "started_at": datetime.now().isoformat()
+                }))
+                sys.exit(0)
+            else:
+                os.setsid()
 
     print(f"\n{Color.BOLD}{Color.GREEN}🛡️⚡ SupaGuard Real-Time Shield Active{Color.RESET}")
     print(f"  Watching Directory: {watch_path}")
@@ -435,17 +485,22 @@ def cmd_watch(args):
         STATUS_FILE.unlink(missing_ok=True)
 
 def cmd_doctor(args):
-    print(f"\n{Color.BOLD}{Color.CYAN}==> SupaGuard System Health & Engine Diagnostics{Color.RESET}\n")
+    os_name = "macOS" if IS_MAC else ("Linux" if IS_LINUX else "Windows")
+    print(f"\n{Color.BOLD}{Color.CYAN}==> SupaGuard System Health & Engine Diagnostics ({os_name}){Color.RESET}\n")
+    
+    clam_fix = "brew install clamav" if IS_MAC else ("apt install clamav" if IS_LINUX else "choco install clamav (or winget install clamav)")
+    trivy_fix = "brew install trivy" if IS_MAC else ("apt install trivy" if IS_LINUX else "choco install trivy (or winget install trivy)")
+    
     tools = [
         {"name": "SupaGuard Core Shield", "check": lambda: True, "fix": "Built-in (Ready)"},
         {"name": "Git Zero-Leak Hooks", "check": lambda: True, "fix": "Ready ('supaguard hook install')"},
         {"name": "Supply-Chain Sentinel", "check": lambda: True, "fix": "Ready ('supaguard safe-install')"},
         {"name": "System & Persistence Hunter", "check": lambda: True, "fix": "Ready ('supaguard audit-system')"},
         {"name": "Web3 & Crypto Shield", "check": lambda: True, "fix": "Ready ('supaguard scan --web3')"},
-        {"name": "ClamAV (Antivirus Engine)", "check": lambda: (shutil.which("clamscan") or shutil.which("clamdscan") or os.path.exists("/opt/local/bin/clamscan")) is not None, "fix": "brew install clamav"},
-        {"name": "Trivy (Secrets & Misconfig)", "check": lambda: (shutil.which("trivy") or os.path.exists("/opt/local/bin/trivy")) is not None, "fix": "brew install trivy"},
-        {"name": "Semgrep (SAST Engine)", "check": lambda: (shutil.which("semgrep") or shutil.which("pysemgrep")) is not None, "fix": "pip3 install --user --break-system-packages semgrep"},
-        {"name": "Python 3 Engine", "check": lambda: shutil.which("python3") is not None, "fix": "brew install python3"}
+        {"name": "ClamAV (Antivirus Engine)", "check": lambda: find_binary("clamscan") is not None, "fix": clam_fix},
+        {"name": "Trivy (Secrets & Misconfig)", "check": lambda: find_binary("trivy") is not None, "fix": trivy_fix},
+        {"name": "Semgrep (SAST Engine)", "check": lambda: (find_binary("semgrep") or find_binary("pysemgrep")) is not None, "fix": "pip install semgrep"},
+        {"name": "Python 3 Engine", "check": lambda: shutil.which("python3") is not None or shutil.which("python") is not None, "fix": "Install Python 3"}
     ]
     all_good = True
     for t in tools:
@@ -457,7 +512,7 @@ def cmd_doctor(args):
     print(f"\n{Color.BOLD}Quarantine Directory:{Color.RESET} {QUARANTINE_DIR}")
     print(f"Logs Directory:       {LOGS_DIR}\n")
     if all_good:
-        print(f"{Color.GREEN}{Color.BOLD}All SupaGuard security engines and modules are active! 100% Security Enabled.{Color.RESET}\n")
+        print(f"{Color.GREEN}{Color.BOLD}All SupaGuard security engines are active! 100% Security Enabled on {os_name}.{Color.RESET}\n")
 
 def cmd_quarantine(args):
     items = list(QUARANTINE_DIR.glob("*.quarantine"))
@@ -529,7 +584,7 @@ def main():
     chk_p = subparsers.add_parser("check-package", help="Inspect an npm package on registry for supply-chain risks")
     chk_p.add_argument("package", help="Package spec (e.g. lodash, express@4.18.2)")
 
-    subparsers.add_parser("audit-system", aliases=["system-audit"], help="Audit macOS LaunchDaemons, LaunchAgents, and shell profiles")
+    subparsers.add_parser("audit-system", aliases=["system-audit"], help="Audit system persistence (LaunchAgents, systemd, or Windows Registry)")
 
     exp_p = subparsers.add_parser("explain", aliases=["deobfuscate"], help="Deobfuscate and semantically explain a suspicious file")
     exp_p.add_argument("file", help="File to deobfuscate and explain")

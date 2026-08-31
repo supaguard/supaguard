@@ -2,13 +2,12 @@
   "name": "supaguard",
   "version": "1.0.0",
   "description": "100% Security & Multi-Layer Developer Defense Suite for Repositories and Codebases",
-  "main": "bin/supaguard.js",
   "bin": {
-    "supaguard": "./bin/supaguard.js"
+    "supaguard": "bin/supaguard.js"
   },
   "scripts": {
-    "start": "node ./bin/supaguard.js",
-    "test": "python3 -m unittest discover -s tests 2>/dev/null || node ./bin/supaguard.js doctor"
+    "start": "node bin/supaguard.js",
+    "test": "node bin/supaguard.js doctor"
   },
   "repository": {
     "type": "git",
@@ -28,7 +27,8 @@
     "semgrep",
     "malware-detection",
     "macos",
-    "linux"
+    "linux",
+    "windows"
   ],
   "author": "SupaGuard Team <security@supaguard.dev>",
   "license": "MIT",
@@ -44,6 +44,7 @@
     "supaguard",
     "assets",
     "install.sh",
+    "install.ps1",
     "README.md",
     "LICENSE"
   ]

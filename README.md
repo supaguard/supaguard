@@ -2,13 +2,13 @@
   <h1 align="center">🛡️⚡ SUPAGUARD</h1>
   <p align="center">
     <strong>100% Security & Multi-Layer Developer Defense Suite</strong><br>
-    Universal Antivirus, Real-Time Active Shield, Supply-Chain Sentinel & Git Zero-Leak Blocker.
+    Universal Cross-Platform Antivirus, Real-Time Shield, Supply-Chain Sentinel & Git Zero-Leak Blocker.
   </p>
   <p align="center">
     <a href="https://npmjs.com/package/supaguard"><img src="https://img.shields.io/npm/v/supaguard.svg?color=indigo&style=flat-square" alt="npm version" /></a>
     <a href="https://pypi.org/project/supaguard"><img src="https://img.shields.io/pypi/v/supaguard.svg?color=blue&style=flat-square" alt="PyPI version" /></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg?style=flat-square" alt="License" /></a>
-    <a href="https://github.com/supaguard/supaguard/actions"><img src="https://img.shields.io/badge/build-passing-brightgreen.svg?style=flat-square" alt="Build Status" /></a>
+    <a href="https://github.com/supaguard/supaguard/actions"><img src="https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-blue.svg?style=flat-square" alt="Platform" /></a>
   </p>
 </p>
 
@@ -16,29 +16,25 @@
 
 ## ⚡ Overview
 
-**SupaGuard** is a developer-first, multi-engine security suite built to safeguard local codebases, microservices, and smart contract repositories. It bridges the gap between binary-level antivirus tools (ClamAV) and developer-focused security engines (Trivy, Semgrep, AST heuristics), delivering real-time defense against malicious payloads, backdoor injections, exposed credentials, and supply-chain attacks.
+**SupaGuard** is a developer-first, cross-platform multi-engine security suite built to safeguard local codebases, microservices, and smart contract repositories across **macOS**, **Linux**, and **Windows**.
 
 ```mermaid
 graph TD
-    SG[SupaGuard CLI] --> Core[5-Layer Security Engine]
-    SG --> Git[Git Zero-Leak Guard]
-    SG --> Supply[Supply-Chain Sentinel]
-    SG --> Sys[macOS Persistence Hunter]
-    SG --> Web3[Web3 Crypto-Shield]
-    SG --> Dash[Interactive HTML Scorecards]
-
-    Core --> H[AST & Heuristic Signatures]
-    Core --> C[ClamAV Binary Signatures]
-    Core --> T[Trivy CVEs & Secrets]
-    Core --> S[Semgrep SAST Code Analyzer]
-    Core --> L[Lockfile Poisoning Sentinel]
+    SG[SupaGuard CLI] --> OS[Cross-Platform Engine: macOS / Linux / Windows]
+    OS --> Core[5-Layer Security Core]
+    OS --> Git[Git Zero-Leak Guard]
+    OS --> Supply[Supply-Chain Sentinel]
+    OS --> Sys[OS Persistence Hunter: LaunchAgents / Systemd / WinRegistry]
+    OS --> Web3[Web3 Crypto-Shield]
+    OS --> Dash[Interactive HTML Scorecards]
 ```
 
 ---
 
-## 🚀 Quick Start (Zero-Friction Install)
+## 🚀 Installation & Distribution
 
 ### 1. Instant Run via NPX (Zero-Install)
+Works out of the box on macOS, Linux, and Windows:
 ```bash
 # Run immediate scan on current project
 npx supaguard scan .
@@ -53,7 +49,7 @@ npm install -g supaguard
 supaguard doctor
 ```
 
-### 3. One-Liner Install Script (Curl / Wget)
+### 3. macOS & Linux One-Liner (Bash / Zsh)
 ```bash
 # Using curl:
 curl -fsSL https://raw.githubusercontent.com/supaguard/supaguard/main/install.sh | bash
@@ -62,19 +58,25 @@ curl -fsSL https://raw.githubusercontent.com/supaguard/supaguard/main/install.sh
 wget -qO- https://raw.githubusercontent.com/supaguard/supaguard/main/install.sh | bash
 ```
 
-### 4. Python Package via Pip
+### 4. Windows One-Liner (PowerShell)
+Run in PowerShell:
+```powershell
+iwr -useb https://raw.githubusercontent.com/supaguard/supaguard/main/install.ps1 | iex
+```
+
+### 5. Python Package via Pip
 ```bash
 pip install supaguard
-# or with pipx:
+# or
 pipx install supaguard
 ```
 
 ---
 
-## 🛡️ Key Features
+## 🛡️ Core Capabilities
 
 ### 1. 🪝 Sub-15ms Git Zero-Leak Pre-Commit Hooks
-Prevent leaked credentials, Stripe live keys, AWS secrets, Google service accounts, or backdoors from ever touching Git history or GitHub remotes.
+Prevent leaked credentials, Stripe live keys, AWS secrets, Google service accounts, or backdoors from ever touching Git history or GitHub remotes across macOS, Linux, and Windows.
 ```bash
 # Protect current repository
 supaguard hook install .
@@ -98,7 +100,7 @@ supaguard check-package crossenv
 
 ### 3. 🌐 Web3 & Smart Contract Crypto-Shield
 * Detects stealth `eth_signTypedData_v4` permit drainer patterns and unlimited ERC-20 token approval traps (`approve(MaxUint256)`).
-* Scans files and shell history (`.zsh_history`) for unencrypted 12/24-word BIP-39 mnemonic seed phrases.
+* Scans files and shell history (`.zsh_history`, PowerShell history) for unencrypted 12/24-word BIP-39 mnemonic seed phrases.
 * Audits Solidity contracts for hidden ownership backdoors and unsafe assembly `delegatecall` opcodes.
 ```bash
 supaguard scan ./web3 --web3
@@ -110,8 +112,10 @@ Unpacks character code arrays, base64 strings, and hex escapes, providing a plai
 supaguard explain suspicious-script.js
 ```
 
-### 5. 🍏 macOS Persistence & System Hunter
-Scans `/Library/LaunchDaemons`, `~/Library/LaunchAgents`, crontabs, and shell startup files (`~/.zshrc`, `~/.bashrc`) for unauthorized background daemons and alias hijacking.
+### 5. 🖥️ OS Persistence & Stealth Hunter
+* **macOS:** Scans `/Library/LaunchDaemons`, `~/Library/LaunchAgents`, and shell startup profiles.
+* **Linux:** Scans `/etc/ld.so.preload`, user/system `systemd` units, and `/etc/cron.*`.
+* **Windows:** Scans Registry Run keys (`HKCU\...\Run`), Startup folder, and PowerShell profiles.
 ```bash
 supaguard audit-system
 ```
@@ -119,7 +123,7 @@ supaguard audit-system
 ### 6. 👁️ Real-Time Active Shield (Background Daemon)
 Monitors files in real time and intercepts write/execution events instantly.
 ```bash
-# Start background shield
+# Start background shield (macOS, Linux, or Windows)
 supaguard watch /path/to/project --daemon
 
 # Check shield status
@@ -137,15 +141,12 @@ supaguard scan . --html
 
 ---
 
-## 🤖 Antigravity AI Development Integration
+## 🤖 Antigravity AI Integration
 
-SupaGuard includes first-class support for **Google Antigravity** AI development workflows.
+SupaGuard includes native support for **Google Antigravity** AI development workflows.
 
-### Included Antigravity Customizations
 * **Antigravity Skill:** `.agents/skills/supaguard/SKILL.md` (Enables AI agents to autonomously audit security posture, protect commits, and sandbox third-party packages).
 * **Antigravity Rule:** `.agents/rules/supaguard-security.md` (Enforces zero credential leakage during agent pair programming).
-
-To activate in any Antigravity project, simply copy the `.agents/` folder into your repository root.
 
 ---
 
@@ -160,27 +161,10 @@ To activate in any Antigravity project, simply copy the `.agents/` folder into y
 | `supaguard hook uninstall`| `[path] [--all]` | Remove SupaGuard Git hooks |
 | `supaguard safe-install` | `<pkg...> [--manager npm\|yarn\|bun\|pnpm]` | Audit dependencies for supply-chain risks before install |
 | `supaguard check-package`| `<pkg>` | Inspect npm registry metadata & typosquats |
-| `supaguard audit-system` | *(none)* | Audit macOS LaunchAgents, LaunchDaemons, and shell profiles |
+| `supaguard audit-system` | *(none)* | Audit macOS LaunchAgents, Linux systemd/cron, or Windows Registry |
 | `supaguard explain` | `<file>` | Deobfuscate and semantically explain a payload |
 | `supaguard doctor` | *(none)* | Verify installation of underlying engines (ClamAV, Trivy, Semgrep) |
 | `supaguard quarantine` | `[list\|purge]` | Manage quarantined threat files |
-
----
-
-## 🔒 Engine Diagnostic Health Check
-
-Run `supaguard doctor` to check the status of all security engines:
-```text
- • SupaGuard Core Shield               : INSTALLED ✓
- • Git Zero-Leak Hooks                 : INSTALLED ✓
- • Supply-Chain Sentinel               : INSTALLED ✓
- • System & Persistence Hunter         : INSTALLED ✓
- • Web3 & Crypto Shield                : INSTALLED ✓
- • ClamAV (Antivirus Engine)           : INSTALLED ✓
- • Trivy (Secrets & Misconfig)         : INSTALLED ✓
- • Semgrep (SAST Engine)               : INSTALLED ✓
- • Python 3 Engine                     : INSTALLED ✓
-```
 
 ---
 
