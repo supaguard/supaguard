@@ -67,15 +67,28 @@ def banner():
    {Color.WHITE}{Color.BOLD}100% SECURITY & MULTI-LAYER DEVELOPER DEFENSE SUITE{Color.RESET}
 """)
 
-IGNORE_DIRS = {
-    ".git/objects", ".git/logs", "node_modules", "dist", ".next",
-    ".expo", "Pods", "vendor", ".cache", "build", "coverage", ".turbo"
+IGNORE_DIR_NAMES = {
+    ".git", ".gemini", ".system_generated", ".vscode", ".cursor", ".idea",
+    "Library", "node_modules", "dist", ".next", ".expo", "Pods", "vendor",
+    ".cache", "build", "coverage", ".turbo", ".supaguard", ".antivirus",
+    ".npm", ".cargo", ".rustup", ".nvm", ".local/share", ".local/state"
 }
-IGNORE_EXTS = {
+
+IGNORE_EXTENSIONS = {
     ".png", ".jpg", ".jpeg", ".gif", ".ico", ".svg", ".webp", ".mp3", ".mp4",
     ".wav", ".pdf", ".zip", ".tar", ".gz", ".woff", ".woff2", ".ttf", ".eot",
-    ".map", ".lock", ".resolved"
+    ".map", ".lock", ".resolved", ".jsonl", ".vscdb", ".sqlite", ".sqlite3",
+    ".db", ".log", ".pid", ".sock", ".bin", ".dmg", ".pkg", ".iso"
 }
+
+def is_ignored_path(path_obj: Path):
+    parts = path_obj.parts
+    for ign in IGNORE_DIR_NAMES:
+        if ign in parts:
+            return True
+    if path_obj.suffix.lower() in IGNORE_EXTENSIONS:
+        return True
+    return False
 
 def find_binary(name: str):
     bin_path = shutil.which(name)
@@ -111,12 +124,15 @@ def run_clamav_scan(target_path: Path):
             if ": " in line and " FOUND" in line:
                 file_part, threat_part = line.split(": ", 1)
                 threat_name = threat_part.replace(" FOUND", "").strip()
+                fp = Path(file_part.strip())
+                if is_ignored_path(fp):
+                    continue
                 findings.append({
                     "engine": "ClamAV",
                     "rule_id": "CLAMAV-VIRUS-FOUND",
                     "name": threat_name,
                     "severity": "CRITICAL",
-                    "file": file_part.strip(),
+                    "file": str(fp),
                     "line": 0,
                     "snippet": f"ClamAV detected signature: {threat_name}",
                     "desc": "Known virus/trojan/malware binary signature matched."
@@ -138,6 +154,8 @@ def run_trivy_scan(target_path: Path):
                 data = json.loads(proc.stdout)
                 for res in data.get("Results", []):
                     target_file = res.get("Target", str(target_path))
+                    if is_ignored_path(Path(target_file)):
+                        continue
                     for secret in res.get("Secrets", []):
                         findings.append({
                             "engine": "Trivy Secrets",
@@ -178,12 +196,15 @@ def run_semgrep_scan(target_path: Path):
             try:
                 data = json.loads(proc.stdout)
                 for res in data.get("results", []):
+                    f_path = res.get("path", str(target_path))
+                    if is_ignored_path(Path(f_path)):
+                        continue
                     findings.append({
                         "engine": "Semgrep SAST",
                         "rule_id": res.get("check_id", "SEMGREP-RULE"),
                         "name": res.get("extra", {}).get("message", "Semgrep Finding"),
                         "severity": res.get("extra", {}).get("severity", "WARNING").upper(),
-                        "file": res.get("path", str(target_path)),
+                        "file": f_path,
                         "line": res.get("start", {}).get("line", 1),
                         "snippet": res.get("extra", {}).get("lines", "").strip()[:100],
                         "desc": res.get("extra", {}).get("metadata", {}).get("shortlink", "")
@@ -235,18 +256,18 @@ def cmd_scan(args):
 
     print(f"{Color.YELLOW}[Layer 1/5]{Color.RESET} Running Built-in Threat & Malicious Pattern Engine...")
     if target.is_file():
-        scanned_files_count += 1
-        all_findings.extend(core_engine.scan_file_heuristics(target))
-        if getattr(args, "web3", False):
-            all_findings.extend(web3_guard.scan_web3_file(target))
+        if not is_ignored_path(target):
+            scanned_files_count += 1
+            all_findings.extend(core_engine.scan_file_heuristics(target))
+            if getattr(args, "web3", False):
+                all_findings.extend(web3_guard.scan_web3_file(target))
     else:
         for root, dirs, files in os.walk(target):
-            dirs[:] = [d for d in dirs if d not in IGNORE_DIRS and not any(ign in os.path.join(root, d) for ign in [".git/objects", "node_modules", "dist", ".next"])]
+            dirs[:] = [d for d in dirs if d not in IGNORE_DIR_NAMES and not any(ign in os.path.join(root, d) for ign in IGNORE_DIR_NAMES)]
             for file in files:
-                ext = os.path.splitext(file)[1].lower()
-                if ext in IGNORE_EXTS:
-                    continue
                 file_path = Path(root) / file
+                if is_ignored_path(file_path):
+                    continue
                 scanned_files_count += 1
                 all_findings.extend(core_engine.scan_file_heuristics(file_path))
                 if getattr(args, "web3", False):
@@ -443,12 +464,11 @@ def cmd_watch(args):
     def populate_snapshot():
         snap = {}
         for root, dirs, files in os.walk(watch_path):
-            dirs[:] = [d for d in dirs if d not in IGNORE_DIRS and "node_modules" not in os.path.join(root, d)]
+            dirs[:] = [d for d in dirs if d not in IGNORE_DIR_NAMES and not any(ign in os.path.join(root, d) for ign in IGNORE_DIR_NAMES)]
             for f in files:
-                ext = os.path.splitext(f)[1].lower()
-                if ext in IGNORE_EXTS:
-                    continue
                 fp = Path(root) / f
+                if is_ignored_path(fp):
+                    continue
                 try:
                     snap[str(fp)] = fp.stat().st_mtime
                 except Exception:
@@ -465,6 +485,8 @@ def cmd_watch(args):
             for fpath_str, mtime in current_snap.items():
                 if fpath_str not in file_snapshot or file_snapshot[fpath_str] != mtime:
                     fpath = Path(fpath_str)
+                    if is_ignored_path(fpath):
+                        continue
                     findings = core_engine.scan_file_heuristics(fpath)
                     if findings:
                         print(f"{Color.BG_RED}{Color.WHITE}{Color.BOLD} BLOCKED / THREAT DETECTED {Color.RESET} {Color.RED}Threat on {fpath.name}{Color.RESET}")
