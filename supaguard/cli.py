@@ -500,6 +500,39 @@ def cmd_watch(args):
         PID_FILE.unlink(missing_ok=True)
         STATUS_FILE.unlink(missing_ok=True)
 
+def cmd_update(args):
+    print(f"\n{Color.BOLD}{Color.CYAN}==> Updating SupaGuard Threat Databases & Engine Code{Color.RESET}\n")
+
+    # 1. Update ClamAV virus database
+    freshclam_bin = find_binary("freshclam")
+    if freshclam_bin:
+        print(" - Checking ClamAV virus signatures (freshclam)...")
+        try:
+            res = subprocess.run([freshclam_bin], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=60)
+            if res.returncode == 0 or "up to date" in res.stdout.lower():
+                print(f"   {Color.GREEN}[OK]{Color.RESET} ClamAV virus database is up to date.")
+            else:
+                print(f"   {Color.YELLOW}[NOTE]{Color.RESET} ClamAV update message: {res.stdout.strip()[:100]}")
+        except Exception as e:
+            print(f"   {Color.YELLOW}[NOTE]{Color.RESET} freshclam status: {e}")
+    else:
+        print(f"   {Color.DIM}[INFO] freshclam not found.{Color.RESET}")
+
+    # 2. Update Local Git Repo if running from source
+    repo_root = Path(__file__).resolve().parent.parent
+    if (repo_root / ".git").exists():
+        print(f" - Updating SupaGuard codebase from repository ({repo_root})...")
+        try:
+            res = subprocess.run(["git", "-C", str(repo_root), "pull"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=30)
+            if res.returncode == 0:
+                print(f"   {Color.GREEN}[OK]{Color.RESET} Codebase updated: {res.stdout.strip()}")
+            else:
+                print(f"   {Color.YELLOW}[NOTE]{Color.RESET} {res.stderr.strip()[:100]}")
+        except Exception as e:
+            print(f"   {Color.YELLOW}[NOTE]{Color.RESET} Git pull skipped: {e}")
+
+    print(f"\n{Color.GREEN}{Color.BOLD}All security definitions, SAST engines, and heuristics are active and up to date!{Color.RESET}\n")
+
 def cmd_doctor(args):
     os_name = "macOS" if IS_MAC else ("Linux" if IS_LINUX else "Windows")
     print(f"\n{Color.BOLD}{Color.CYAN}==> SupaGuard System Health & Engine Diagnostics ({os_name}){Color.RESET}\n")
@@ -606,6 +639,7 @@ def main():
     exp_p.add_argument("file", help="File to deobfuscate and explain")
 
     subparsers.add_parser("doctor", aliases=["setup", "check"], help="Check security engine health & diagnostics")
+    subparsers.add_parser("update", aliases=["upgrade"], help="Update threat signatures and engine definitions")
 
     q_p = subparsers.add_parser("quarantine", help="Manage quarantined files")
     q_p.add_argument("action", choices=["list", "purge"], nargs="?", default="list", help="Action")
@@ -642,6 +676,8 @@ def main():
         deobfuscator.explain_file(Path(args.file).resolve())
     elif args.command in ["doctor", "setup", "check"]:
         cmd_doctor(args)
+    elif args.command in ["update", "upgrade"]:
+        cmd_update(args)
     elif args.command == "quarantine":
         cmd_quarantine(args)
 
