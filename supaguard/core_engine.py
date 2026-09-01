@@ -28,7 +28,8 @@ HEURISTIC_RULES = [
         "name": "Remote Script Download & Pipe to Shell",
         "severity": "HIGH",
         "pattern": re.compile(r"""(?:curl|wget)\s+[^|;\n]+(?:\|\s*(?:bash|sh|zsh)|>\s*/tmp/[^;\n]+\s*&&\s*(?:sh|bash))""", re.IGNORECASE),
-        "desc": "Direct piping of remote web payloads into a system shell."
+        "desc": "Direct piping of remote web payloads into a system shell.",
+        "skip_comments_and_docs": True
     },
     {
         "id": "SG-MAL-OBF-CHARCODE-EVAL",
@@ -56,7 +57,8 @@ HEURISTIC_RULES = [
         "name": "Exposed Raw RSA/EC Private Key",
         "severity": "HIGH",
         "pattern": re.compile(r"""-----BEGIN (?:RSA |EC |OPENSSH |DSA )?PRIVATE KEY-----"""),
-        "desc": "Raw unencrypted private key located in file."
+        "desc": "Raw unencrypted private key located in file.",
+        "skip_docs": True
     },
     {
         "id": "SG-SEC-HARDCODED-SECRET-TOKEN",
@@ -75,6 +77,8 @@ HEURISTIC_RULES = [
     }
 ]
 
+DOC_EXTENSIONS = {".md", ".markdown", ".rst", ".txt"}
+
 def scan_file_heuristics(filepath: Path):
     """Scans a single file against SupaGuard's built-in rule definitions."""
     findings = []
@@ -83,6 +87,8 @@ def scan_file_heuristics(filepath: Path):
             return findings
         if filepath.stat().st_size > 5 * 1024 * 1024:
             return findings
+        
+        is_doc = filepath.suffix.lower() in DOC_EXTENSIONS
         
         with open(filepath, "r", encoding="utf-8", errors="ignore") as f:
             content = f.read()
@@ -94,12 +100,20 @@ def scan_file_heuristics(filepath: Path):
             for rule in HEURISTIC_RULES:
                 if "path_filter" in rule and not rule["path_filter"].search(str(filepath)):
                     continue
+                if is_doc and rule.get("skip_docs", False):
+                    continue
                 
                 matches = list(rule["pattern"].finditer(content))
                 for match in matches:
                     match_pos = match.start()
                     line_no = content.count("\n", 0, match_pos) + 1
                     snippet = lines[line_no - 1].strip() if line_no <= len(lines) else ""
+                    
+                    # Ignore comment lines for remote pipe execution rules (e.g. usage instructions in headers)
+                    if rule.get("skip_comments_and_docs", False):
+                        if is_doc or snippet.startswith("#") or snippet.startswith("//") or snippet.startswith("/*") or snippet.startswith("*"):
+                            continue
+
                     if len(snippet) > 120:
                         snippet = snippet[:117] + "..."
                     findings.append({

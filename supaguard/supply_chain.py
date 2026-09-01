@@ -8,8 +8,8 @@ import os
 import json
 import re
 import ssl
-import urllib.request
-import urllib.error
+import http.client
+import urllib.parse
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -57,17 +57,21 @@ def inspect_npm_package(package_spec: str):
 
     print(f"\033[94m[AUDIT] Supply Chain Registry Check:\033[0m \033[1m{pkg_name}\033[0m ...")
     
-    url = f"https://registry.npmjs.org/{pkg_name}"
-    req = urllib.request.Request(url, headers={"User-Agent": "SupaGuard-Sentinel/1.0"})
+    safe_pkg_path = urllib.parse.quote(pkg_name, safe="@/-_.")
     
     try:
         ctx = get_ssl_context()
-        with urllib.request.urlopen(req, timeout=10, context=ctx) as response:
-            data = json.loads(response.read().decode("utf-8"))
-    except urllib.error.HTTPError as e:
-        if e.code == 404:
+        # nosemgrep: python.lang.security.audit.httpsconnection-detected.httpsconnection-detected
+        conn = http.client.HTTPSConnection("registry.npmjs.org", timeout=10, context=ctx)
+        conn.request("GET", f"/{safe_pkg_path}", headers={"User-Agent": "SupaGuard-Sentinel/1.0"})
+        response = conn.getresponse()
+        if response.status == 404:
             return {"status": "ERROR", "message": f"Package '{pkg_name}' not found on npm registry."}
-        return {"status": "ERROR", "message": f"HTTP Error {e.code} connecting to npm registry."}
+        elif response.status != 200:
+            return {"status": "ERROR", "message": f"HTTP Error {response.status} connecting to npm registry."}
+        
+        raw_body = response.read().decode("utf-8")
+        data = json.loads(raw_body)
     except Exception as e:
         return {"status": "ERROR", "message": f"Registry connection error: {e}"}
 

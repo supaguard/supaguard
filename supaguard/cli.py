@@ -83,8 +83,8 @@ IGNORE_EXTENSIONS = {
 
 def is_ignored_path(path_obj: Path):
     parts = path_obj.parts
-    for ign in IGNORE_DIR_NAMES:
-        if ign in parts:
+    for p in parts:
+        if p in IGNORE_DIR_NAMES or p.endswith(".egg-info") or p.startswith(".git"):
             return True
     if path_obj.suffix.lower() in IGNORE_EXTENSIONS:
         return True
@@ -263,7 +263,7 @@ def cmd_scan(args):
                 all_findings.extend(web3_guard.scan_web3_file(target))
     else:
         for root, dirs, files in os.walk(target):
-            dirs[:] = [d for d in dirs if d not in IGNORE_DIR_NAMES and not any(ign in os.path.join(root, d) for ign in IGNORE_DIR_NAMES)]
+            dirs[:] = [d for d in dirs if not is_ignored_path(Path(root) / d)]
             for file in files:
                 file_path = Path(root) / file
                 if is_ignored_path(file_path):
@@ -464,7 +464,7 @@ def cmd_watch(args):
     def populate_snapshot():
         snap = {}
         for root, dirs, files in os.walk(watch_path):
-            dirs[:] = [d for d in dirs if d not in IGNORE_DIR_NAMES and not any(ign in os.path.join(root, d) for ign in IGNORE_DIR_NAMES)]
+            dirs[:] = [d for d in dirs if not is_ignored_path(Path(root) / d)]
             for f in files:
                 fp = Path(root) / f
                 if is_ignored_path(fp):

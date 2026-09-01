@@ -4,7 +4,7 @@
 Whenever working within repositories protected by **SupaGuard**, all AI agents and tools MUST adhere to the following security protocols:
 
 ### 1. Zero Credentials in Source Code
-* NEVER write raw private keys (`-----BEGIN PRIVATE KEY-----`), high-entropy API tokens (`sk_live_...`, `ghp_...`, AWS keys), or BIP-39 mnemonic seed phrases into tracked files.
+* NEVER write raw private keys (such as RSA or EC private key headers), high-entropy API tokens (Stripe live keys, GitHub tokens, AWS keys), or BIP-39 mnemonic seed phrases into tracked files.
 * Always place credentials into `.env.local` or environment variables, and ensure `.env*` files are registered in `.gitignore`.
 
 ### 2. Mandatory Supply-Chain Vetting

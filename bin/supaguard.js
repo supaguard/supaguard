@@ -2,12 +2,11 @@
 
 /**
  * SupaGuard Node.js Binary Wrapper
- * Cross-Platform: macOS, Linux, and Windows (CMD & PowerShell).
+ * Cross-Platform: macOS, Linux, and Windows.
  */
 
 const { spawn, execSync } = require('child_process');
 const path = require('path');
-const os = require('os');
 
 const cliPath = path.join(__dirname, 'supaguard');
 const args = process.argv.slice(2);
@@ -33,7 +32,7 @@ const pythonCmd = getPythonCommand();
 const proc = spawn(pythonCmd, [cliPath, ...args], {
   stdio: 'inherit',
   env: process.env,
-  shell: process.platform === 'win32'
+  shell: false
 });
 
 proc.on('error', (err) => {
