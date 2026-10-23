@@ -241,6 +241,28 @@ def quarantine_file(file_path_str: str, threat_info: dict):
     except Exception as e:
         return False, str(e)
 
+def delete_file(file_path_str: str, threat_info: dict):
+    src = Path(file_path_str)
+    if not src.exists() and ":" in file_path_str:
+        src = Path(file_path_str.split(":")[0])
+    if not src.exists():
+        return False, "Target does not exist."
+    try:
+        if src.is_dir():
+            shutil.rmtree(str(src))
+            return True, f"Directory permanently deleted: {src}"
+        if "cli.js" in src.name:
+            text = src.read_text(encoding="utf-8", errors="ignore")
+            if re.search(r"/\*M[0-9A-Za-z]+\*/|npm-ws-runner", text):
+                clean_lines = [l for l in text.splitlines() if not re.search(r"/\*M[0-9A-Za-z]+\*/|npm-ws-runner", l)]
+                src.write_text("\n".join(clean_lines) + "\n", encoding="utf-8")
+                return True, f"Disinfected backdoor injection from {src}"
+        src.unlink()
+        return True, f"Permanently deleted: {src}"
+    except Exception as e:
+        return False, str(e)
+
+
 def cmd_scan(args):
     target = Path(args.path).resolve()
     if not target.exists():
@@ -353,6 +375,23 @@ def cmd_scan(args):
                     print(f"  {Color.GREEN}[QUARANTINED]:{Color.RESET} {q_item['file']} -> {res}")
                 else:
                     print(f"  {Color.RED}[FAILED]:{Color.RESET} {q_item['file']} ({res})")
+
+        delete_list = []
+        if getattr(args, "delete", False) or getattr(args, "purge", False):
+            for item in all_findings:
+                sev = item.get("severity", "MEDIUM").upper()
+                if sev in ["CRITICAL", "HIGH"]:
+                    delete_list.append(item)
+
+        if delete_list:
+            print(f"\n{Color.BOLD}{Color.RED}==> Processing Permanent Deletion Requests...{Color.RESET}")
+            for d_item in delete_list:
+                success, res = delete_file(d_item["file"], d_item)
+                if success:
+                    print(f"  {Color.GREEN}[DELETED / DISINFECTED]:{Color.RESET} {d_item['file']} ({res})")
+                else:
+                    print(f"  {Color.RED}[DELETE FAILED]:{Color.RESET} {d_item['file']} ({res})")
+
 
     if getattr(args, "html", False):
         report_file = Path.cwd() / f"supaguard_report_{int(time.time())}.html"
@@ -599,6 +638,7 @@ def main():
     scan_p.add_argument("path", nargs="?", default=".", help="Target path to scan")
     scan_p.add_argument("--quick", action="store_true", help="Fast heuristic & secrets scan only")
     scan_p.add_argument("--quarantine", action="store_true", help="Auto-isolate detected critical threats")
+    scan_p.add_argument("--delete", "--purge", dest="delete", action="store_true", help="Permanently delete and disinfect detected threats (purges from disk)")
     scan_p.add_argument("--web3", action="store_true", help="Enable Web3 drainer & mnemonic scans")
     scan_p.add_argument("--html", action="store_true", help="Generate interactive HTML report")
 
@@ -606,6 +646,7 @@ def main():
     sweep_p.add_argument("root_path", nargs="?", default=".", help="Root directory")
     sweep_p.add_argument("--quick", action="store_true", help="Quick scan mode")
     sweep_p.add_argument("--quarantine", action="store_true", help="Auto-quarantine threats")
+    sweep_p.add_argument("--delete", "--purge", dest="delete", action="store_true", help="Permanently delete and disinfect detected threats")
     sweep_p.add_argument("--web3", action="store_true", help="Web3 audits")
     sweep_p.add_argument("--html", action="store_true", help="Generate HTML reports")
 
@@ -633,7 +674,8 @@ def main():
     chk_p = subparsers.add_parser("check-package", help="Inspect an npm package on registry for supply-chain risks")
     chk_p.add_argument("package", help="Package spec (e.g. lodash, express@4.18.2)")
 
-    subparsers.add_parser("audit-system", aliases=["system-audit"], help="Audit system persistence (LaunchAgents, systemd, or Windows Registry)")
+    audit_p = subparsers.add_parser("audit-system", aliases=["system-audit"], help="Audit system persistence (LaunchAgents, systemd, or Windows Registry)")
+    audit_p.add_argument("--fix", "--delete", dest="fix", action="store_true", help="Automatically delete/disinfect detected backdoor artifacts and rogue persistence hooks")
 
     exp_p = subparsers.add_parser("explain", aliases=["deobfuscate"], help="Deobfuscate and semantically explain a suspicious file")
     exp_p.add_argument("file", help="File to deobfuscate and explain")
@@ -671,7 +713,7 @@ def main():
         res = supply_chain.inspect_npm_package(args.package)
         print(json.dumps(res, indent=2))
     elif args.command in ["audit-system", "system-audit"]:
-        system_audit.run_system_audit()
+        system_audit.run_system_audit(fix=getattr(args, "fix", False))
     elif args.command in ["explain", "deobfuscate"]:
         deobfuscator.explain_file(Path(args.file).resolve())
     elif args.command in ["doctor", "setup", "check"]:

@@ -74,6 +74,27 @@ HEURISTIC_RULES = [
         "pattern": re.compile(r"""(?:curl|wget|nc|python -c|bash -i)\s+""", re.IGNORECASE),
         "desc": "Git lifecycle hook triggering network requests or shell escapes.",
         "path_filter": re.compile(r"""\.git/hooks/""")
+    },
+    {
+        "id": "SG-MAL-NODE-CLI-INJECTION",
+        "name": "Node.js / npm CLI Entrypoint Backdoor Injection",
+        "severity": "CRITICAL",
+        "pattern": re.compile(r"""(?:/\*M[0-9A-Za-z]+\*/|cp\.spawn\s*\(\s*process\.execPath|runner=path\.join\(os\.homedir\(\),.*?npm-ws)""", re.IGNORECASE),
+        "desc": "Malicious code injection or stealth detached process spawner injected into Node / npm CLI."
+    },
+    {
+        "id": "SG-MAL-XOR-DYNAMIC-EVAL",
+        "name": "XOR Decrypted Dynamic Eval Execution",
+        "severity": "CRITICAL",
+        "pattern": re.compile(r"""(?:\^=\s*[a-zA-Z0-9_$]+\.charCodeAt\([^)]*\).*?eval\s*\(|eval\s*\(\s*dec\s*\(\s*await\s+get\()""", re.DOTALL),
+        "desc": "Payload decrypts XOR-obfuscated remote bytecode/strings and dynamically evaluates in memory."
+    },
+    {
+        "id": "SG-MAL-NPM-WS-C2-STEALER",
+        "name": "NPM-WS C2 Remote Stealer / Runner",
+        "severity": "CRITICAL",
+        "pattern": re.compile(r"""(?:\.npm-ws-runner\.js|\.npm-ws\.json|\.npm-ws\.pid|/0x/cls|['"]_t_s['"]\s*:\s*['"]https?://[0-9\.]+)""", re.IGNORECASE),
+        "desc": "Configuration or runner artifacts for known npm-ws credential stealer / backdoor C2 communication."
     }
 ]
 

@@ -7,6 +7,8 @@ import os
 import sys
 import re
 import subprocess
+import shutil
+import signal
 from pathlib import Path
 
 IS_MAC = sys.platform == "darwin"
@@ -233,12 +235,135 @@ def audit_crontabs():
         pass
     return findings
 
-def run_system_audit():
+
+# ----------------- Node.js & Package Manager Auditor -----------------
+def audit_node_installations(fix=False):
+    findings = []
+    
+    # 1. Check for rogue ~/.node_modules directory in home
+    rogue_dir = Path.home() / ".node_modules"
+    if rogue_dir.exists():
+        is_malicious = False
+        sample_files = list(rogue_dir.glob(".npm-ws*"))
+        if sample_files or (rogue_dir / ".npm-ws-runner.js").exists() or (rogue_dir / ".npm-ws.json").exists():
+            is_malicious = True
+        
+        detail = f"Rogue ~/.node_modules malware staging directory found ({len(sample_files)} .npm-ws artifacts)."
+        if fix and is_malicious:
+            try:
+                shutil.rmtree(str(rogue_dir))
+                detail += " -> [REMEDIATED: DELETED]"
+            except Exception as e:
+                detail += f" -> [DELETE FAILED: {e}]"
+
+        findings.append({
+            "severity": "CRITICAL",
+            "category": "Rogue ~/.node_modules Malware Runner Staging",
+            "file": str(rogue_dir),
+            "detail": detail
+        })
+
+    # 2. Check npm/lib/cli.js files across system and nvm installations
+    cli_candidates = []
+    nvm_dir = Path.home() / ".nvm" / "versions" / "node"
+    if nvm_dir.exists():
+        for ver in nvm_dir.iterdir():
+            candidate = ver / "lib" / "node_modules" / "npm" / "lib" / "cli.js"
+            if candidate.exists():
+                cli_candidates.append(candidate)
+
+    system_paths = [
+        Path("/usr/local/lib/node_modules/npm/lib/cli.js"),
+        Path("/opt/homebrew/lib/node_modules/npm/lib/cli.js"),
+        Path("/opt/local/lib/node_modules/npm/lib/cli.js"),
+        Path.home() / ".fnm" / "current" / "lib" / "node_modules" / "npm" / "lib" / "cli.js"
+    ]
+    for sp in system_paths:
+        if sp.exists() and sp not in cli_candidates:
+            cli_candidates.append(sp)
+
+    try:
+        which_npm = subprocess.run(["which", "npm"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if which_npm.returncode == 0 and which_npm.stdout.strip():
+            npm_bin = Path(which_npm.stdout.strip()).resolve()
+            candidate = npm_bin.parent.parent / "lib" / "node_modules" / "npm" / "lib" / "cli.js"
+            if candidate.exists() and candidate not in cli_candidates:
+                cli_candidates.append(candidate)
+    except Exception:
+        pass
+
+    for cli_file in cli_candidates:
+        try:
+            txt = cli_file.read_text(encoding="utf-8", errors="ignore")
+            injected = False
+            matched_pattern = ""
+            if re.search(r"/\*M[0-9A-Za-z]+\*/|cp\.spawn\(process\.execPath|npm-ws-runner", txt):
+                injected = True
+                matched_pattern = "/*M[0-9A-Z]+*/ or detached payload runner"
+
+            if injected:
+                detail = f"Backdoor hook injected into npm CLI ({matched_pattern})."
+                if fix:
+                    try:
+                        clean_lines = [line for line in txt.splitlines() if not re.search(r"/\*M[0-9A-Za-z]+\*/|npm-ws-runner", line)]
+                        cleaned_txt = "\n".join(clean_lines) + "\n"
+                        cli_file.write_text(cleaned_txt, encoding="utf-8")
+                        detail += " -> [REMEDIATED: DISINFECTED & CLEANED]"
+                    except Exception as e:
+                        detail += f" -> [DISINFECTION FAILED: {e}]"
+
+                findings.append({
+                    "severity": "CRITICAL",
+                    "category": "Node / npm CLI Entrypoint Backdoor Injection",
+                    "file": str(cli_file),
+                    "detail": detail
+                })
+        except Exception:
+            pass
+
+    return findings
+
+def audit_running_processes(fix=False):
+    findings = []
+    if IS_WIN:
+        return findings
+    try:
+        proc = subprocess.run(["ps", "-eo", "pid,command"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        if proc.returncode == 0 and proc.stdout:
+            for line in proc.stdout.splitlines()[1:]:
+                parts = line.strip().split(None, 1)
+                if len(parts) < 2:
+                    continue
+                pid_str, cmd = parts[0], parts[1]
+                if re.search(r"npm-ws|\.npm-ws-runner|KEY.*?eval|95\.135\.181\.151", cmd, re.IGNORECASE):
+                    detail = f"Suspicious active process (PID {pid_str}): {cmd[:100]}"
+                    if fix:
+                        try:
+                            os.kill(int(pid_str), signal.SIGKILL)
+                            detail += " -> [REMEDIATED: KILLED]"
+                        except Exception as e:
+                            detail += f" -> [KILL FAILED: {e}]"
+
+                    findings.append({
+                        "severity": "CRITICAL",
+                        "category": "Active Malicious Node / Backdoor Process",
+                        "file": f"PID:{pid_str}",
+                        "detail": detail
+                    })
+    except Exception:
+        pass
+    return findings
+
+def run_system_audit(fix=False):
     os_name = "macOS" if IS_MAC else ("Linux" if IS_LINUX else "Windows")
     print(f"\n\033[1;96m==> SupaGuard System & Persistence Hunter ({os_name})\033[0m\n")
     
     all_findings = []
     
+    print(" • Inspecting Node.js runtimes, npm CLI entrypoints & Home directory...")
+    all_findings.extend(audit_node_installations(fix=fix))
+    print(" • Auditing running processes for background stealers & unauthorized node payloads...")
+    all_findings.extend(audit_running_processes(fix=fix))
     if IS_MAC:
         print(" • Inspecting macOS LaunchDaemons & LaunchAgents...")
         all_findings.extend(audit_macos())
