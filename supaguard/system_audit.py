@@ -242,7 +242,7 @@ def audit_node_installations(fix=False):
     
     # 1. Check for rogue ~/.node_modules directory in home
     rogue_dir = Path.home() / ".node_modules"
-    if rogue_dir.exists():
+    if rogue_dir.is_dir():
         is_malicious = False
         sample_files = list(rogue_dir.glob(".npm-ws*"))
         if sample_files or (rogue_dir / ".npm-ws-runner.js").exists() or (rogue_dir / ".npm-ws.json").exists():
@@ -262,6 +262,9 @@ def audit_node_installations(fix=False):
             "file": str(rogue_dir),
             "detail": detail
         })
+    elif rogue_dir.is_file() and rogue_dir.stat().st_size == 0:
+        # Immutable OS-level immunization lock preventing malware directory recreation
+        pass
 
     # 2. Check npm/lib/cli.js files across system and nvm installations
     cli_candidates = []
