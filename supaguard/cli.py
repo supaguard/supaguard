@@ -666,6 +666,7 @@ def main():
     h_uninst.add_argument("path", nargs="?", default=".", help="Target repo")
     h_uninst.add_argument("--all", action="store_true", help="Recursively uninstall")
     hook_sub.add_parser("check-staged", help="Internal hook runner for git staged diff")
+    hook_sub.add_parser("check-ingested", help="Internal hook runner for git pull / clone / checkout ingestion")
 
     safe_p = subparsers.add_parser("safe-install", aliases=["install-guard"], help="Supply chain inspection before npm/yarn/bun install")
     safe_p.add_argument("packages", nargs="+", help="Package name(s) to inspect & install")
@@ -705,6 +706,8 @@ def main():
             git_guard.uninstall_hooks(Path(args.path).resolve(), recurse=args.all)
         elif args.hook_action == "check-staged":
             git_guard.check_staged_files()
+        elif args.hook_action == "check-ingested":
+            git_guard.check_ingested_files()
         else:
             hook_p.print_help()
     elif args.command in ["safe-install", "install-guard"]:

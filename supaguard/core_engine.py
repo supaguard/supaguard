@@ -95,6 +95,27 @@ HEURISTIC_RULES = [
         "severity": "CRITICAL",
         "pattern": re.compile(r"""(?:\.npm-ws-runner\.js|\.npm-ws\.json|\.npm-ws\.pid|/0x/cls|['"]_t_s['"]\s*:\s*['"]https?://[0-9\.]+)""", re.IGNORECASE),
         "desc": "Configuration or runner artifacts for known npm-ws credential stealer / backdoor C2 communication."
+    },
+    {
+        "id": "SG-MAL-VSCODE-AUTO-TASK",
+        "name": "VS Code Stealth Auto-Task Execution",
+        "severity": "CRITICAL",
+        "pattern": re.compile(r"""(?:['"]runOn['"]\s*:\s*['"]folderOpen['"]|fa-solid-700|command\s*:\s*.*?(?:node|sh|bash|python|curl)\s+.*?public/fonts)""", re.IGNORECASE),
+        "desc": "VS Code tasks.json configured to silently execute code on folder open."
+    },
+    {
+        "id": "SG-MAL-FAKE-FONT-EXECUTABLE",
+        "name": "Masquerading Executable Script in Font/Media Path",
+        "severity": "CRITICAL",
+        "pattern": re.compile(r"""(?:console\.log\s*\(|require\s*\(\s*['"]child_process['"]|process\.execPath|node\s+\./public/fonts)""", re.IGNORECASE),
+        "desc": "Executable JavaScript or shell commands hiding inside a font or media file."
+    },
+    {
+        "id": "SG-MAL-EXTREME-WHITESPACE-PAD",
+        "name": "Stealth Viewport Margin Padding Payload",
+        "severity": "HIGH",
+        "pattern": re.compile(r"""(?: {150,}|	{15,})(?:[a-zA-Z0-9_$]+\s*=|(?:require|import|eval|exec|Buffer))"""),
+        "desc": "Extreme whitespace indentation (>150 spaces) used to hide malicious payload past editor viewports."
     }
 ]
 
@@ -156,9 +177,10 @@ def check_package_json(filepath: Path, content: str):
     try:
         data = json.loads(content)
         scripts = data.get("scripts", {})
-        for hook in ["preinstall", "postinstall", "install", "prepare"]:
-            if hook in scripts:
-                cmd = scripts[hook]
+        for hook, cmd in scripts.items():
+            if not isinstance(cmd, str):
+                continue
+            if hook in ["preinstall", "postinstall", "install", "prepare"]:
                 if re.search(r"(?:curl|wget|base64|/dev/tcp|eval\(|unescape)", cmd, re.IGNORECASE):
                     findings.append({
                         "engine": "SupaGuard Supply-Chain",
@@ -170,6 +192,17 @@ def check_package_json(filepath: Path, content: str):
                         "snippet": f'"{hook}": "{cmd}"',
                         "desc": f"Package lifecycle hook executes suspicious network/eval command: {cmd}"
                     })
+            if re.search(r"(?:node\s+api\.js|npm-ws|/public/fonts/|\.otf|\.ttf|fa-solid)", cmd, re.IGNORECASE):
+                findings.append({
+                    "engine": "SupaGuard Supply-Chain",
+                    "rule_id": "SG-MAL-PACKAGE-SCRIPT-INJECTION",
+                    "name": f"Malicious Script Injection in package.json ('{hook}')",
+                    "severity": "CRITICAL",
+                    "file": str(filepath),
+                    "line": 1,
+                    "snippet": f'"{hook}": "{cmd}"',
+                    "desc": f"Package.json script '{hook}' invokes known malware dropper: {cmd}"
+                })
     except Exception:
         pass
     return findings

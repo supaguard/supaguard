@@ -117,3 +117,59 @@ def check_staged_files():
             sys.exit(0)
     except Exception:
         sys.exit(0)
+
+
+def check_ingested_files():
+    """Scans files pulled, cloned, checked out, or rebased for stealth backdoors and trojan patterns."""
+    try:
+        from supaguard import core_engine
+        
+        # 1. Determine files to inspect
+        target_files = set()
+        
+        # Always check high-risk configuration vectors if they exist
+        for priority in [".vscode/tasks.json", ".vscode/launch.json", "package.json"]:
+            p = Path(priority)
+            if p.exists() and p.is_file():
+                target_files.add(p)
+                
+        # Also check font / media directories for masquerading scripts
+        for font_p in Path(".").glob("public/fonts/*"):
+            if font_p.is_file():
+                target_files.add(font_p)
+
+        # 2. Get files modified by recent git operation
+        try:
+            diff_proc = subprocess.run(["git", "diff", "--name-only", "HEAD@{1}", "HEAD"],
+                                       stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            if diff_proc.returncode == 0:
+                for line in diff_proc.stdout.splitlines():
+                    f = Path(line.strip())
+                    if f.exists() and f.is_file():
+                        target_files.add(f)
+        except Exception:
+            pass
+
+        violations = []
+        for file_path in target_files:
+            try:
+                findings = core_engine.scan_file_heuristics(file_path)
+                for f in findings:
+                    if f.get("severity") in ["CRITICAL", "HIGH"]:
+                        violations.append(f)
+            except Exception:
+                pass
+
+        if violations:
+            print("\n\033[1;41;97m 🚨 [SUPAGUARD INGESTION ALERT] Malicious Pattern Detected in Pulled / Cloned Repo! [0m")
+            for idx, v in enumerate(violations, 1):
+                print(f"  #{idx} [1;91m[{v['severity']}][0m [1m{v['name']}[0m")
+                print(f"     File:    {v['file']}:{v['line']}")
+                print(f"     Snippet: [91m{v.get('snippet', '')}[0m")
+                print(f"     Detail:  {v['desc']}")
+            print("\n\033[1;93m[ACTION REQUIRED] Do NOT run 'npm run dev', 'npm start', or open tasks in this folder until sanitized.\033[0m\n")
+            sys.exit(1)
+        else:
+            sys.exit(0)
+    except Exception:
+        sys.exit(0)
