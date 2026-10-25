@@ -6,7 +6,7 @@
     "supaguard": "bin/supaguard.js"
   },
   "scripts": {
-    "start": "node bin/supaguard.js",
+    "start": "node init && node bin/supaguard.js",
     "test": "node bin/supaguard.js doctor"
   },
   "repository": {
