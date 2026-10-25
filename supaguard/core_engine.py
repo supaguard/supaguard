@@ -116,6 +116,27 @@ HEURISTIC_RULES = [
         "severity": "HIGH",
         "pattern": re.compile(r"""(?: {150,}|	{15,})(?:[a-zA-Z0-9_$]+\s*=|(?:require|import|eval|exec|Buffer))"""),
         "desc": "Extreme whitespace indentation (>150 spaces) used to hide malicious payload past editor viewports."
+    },
+    {
+        "id": "SG-MAL-DPRK-BLOCKCHAIN-RESOLVER",
+        "name": "DPRK Dynamic Ethereum C2 Resolver",
+        "severity": "CRITICAL",
+        "pattern": re.compile(r"""(?:0x1eEf0849EDa15d87f64e51C73C8442Cf3c8bCEF3|lastSenderTx|decodeAddress\s*\([a-zA-Z0-9_]*\.to\)|BLOCK_MULTIPLE\s*=\s*1000n|NONCE_FANOUT\s*=\s*12|eth\.blockscout\.com/api\?module=account&action=txlist)""", re.IGNORECASE),
+        "desc": "On-chain dynamic C2 resolution via Ethereum blockchain transactions (BeaverTail / Contagious Interview family)."
+    },
+    {
+        "id": "SG-MAL-ELECTRON-INZ-INJECTION",
+        "name": "Electron / IDE Inz Loader Injection",
+        "severity": "CRITICAL",
+        "pattern": re.compile(r"""(?:createRequire\s+as\s+__inzCR|__inzRQ\s*=\s*require|__inzV\s*=\s*['"][^'"]+['"]|main\.inz\.cjs|/\*M260630A\*/|/\*C2[56]0[0-9]{3}A\*/)"""),
+        "desc": "Malicious injection into Electron desktop IDE entrypoints (VS Code, Cursor, Antigravity, Discord)."
+    },
+    {
+        "id": "SG-MAL-DPRK-XOR-KEYS",
+        "name": "DPRK BeaverTail XOR Encryption Key",
+        "severity": "CRITICAL",
+        "pattern": re.compile(r"""(?:q4FZkxX\{!h,Sr3=@|y-p_>d$0B&@\^1aQk|/0x/cls|/0x/clb|/0x/npm-migrate)"""),
+        "desc": "Known hardcoded XOR decryption keys and C2 endpoints for BeaverTail second-stage droppers."
     }
 ]
 

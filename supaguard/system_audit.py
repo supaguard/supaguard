@@ -326,6 +326,74 @@ def audit_node_installations(fix=False):
 
     return findings
 
+def audit_ide_injections(fix=False):
+    findings = []
+    
+    targets = []
+    if IS_MAC:
+        targets.extend([
+            Path('/Applications/Visual Studio Code.app/Contents/Resources/app/out/main.js'),
+            Path('/Applications/Cursor.app/Contents/Resources/app/out/main.js'),
+            Path('/Applications/Antigravity.app/Contents/Resources/app/out/main.js'),
+            Path('/Applications/GitHub Desktop.app/Contents/Resources/app/main.js')
+        ])
+        discord_dir = Path.home() / 'Library' / 'Application Support' / 'discord'
+        if discord_dir.exists():
+            for p in discord_dir.glob('**/discord_desktop_core/index.js'):
+                targets.append(p)
+    elif IS_LINUX:
+        targets.extend([
+            Path('/usr/share/code/resources/app/out/main.js'),
+            Path('/usr/share/cursor/resources/app/out/main.js'),
+            Path('/usr/share/antigravity/resources/app/out/main.js')
+        ])
+    elif IS_WIN:
+        local_appdata = os.environ.get('LOCALAPPDATA', '')
+        if local_appdata:
+            targets.extend([
+                Path(local_appdata) / 'Programs' / 'Microsoft VS Code' / 'resources' / 'app' / 'out' / 'main.js',
+                Path(local_appdata) / 'Programs' / 'cursor' / 'resources' / 'app' / 'out' / 'main.js'
+            ])
+
+    for target in targets:
+        if not target.exists():
+            continue
+        try:
+            content = target.read_text(errors='ignore')
+            inz_marker = any(m in content for m in ['__inzCR', '__inzRQ', 'main.inz.cjs', '/*M260630A*/', '/*C250', '/*C260'])
+            parent = target.parent
+            rogue_cjs = parent / 'main.inz.cjs'
+            backup_orig = parent / (target.name + '.inz.orig')
+            
+            if inz_marker or rogue_cjs.exists():
+                detail = f'Rogue Electron/IDE injection detected in {target.name}.'
+                if fix:
+                    if backup_orig.exists():
+                        shutil.copy2(str(backup_orig), str(target))
+                        backup_orig.unlink(missing_ok=True)
+                        rogue_cjs.unlink(missing_ok=True)
+                        target.chmod(0o444)
+                        detail += ' -> [REMEDIATED: RESTORED FROM CLEAN BACKUP & LOCKED READ-ONLY]'
+                    else:
+                        # Strip injection markers
+                        clean_content = re.sub(r'import\s*\{[^}]*__inzCR[^;]*;\s*', '', content)
+                        clean_content = re.sub(r'/\*[MC]2[0-9]{5}[A-Z]\*/', '', clean_content)
+                        target.write_text(clean_content)
+                        rogue_cjs.unlink(missing_ok=True)
+                        target.chmod(0o444)
+                        detail += ' -> [REMEDIATED: INJECTION STRIPPED & LOCKED READ-ONLY]'
+                
+                findings.append({
+                    'severity': 'CRITICAL',
+                    'category': 'Electron Desktop IDE Injected Loader',
+                    'file': str(target),
+                    'detail': detail
+                })
+        except Exception as e:
+            pass
+            
+    return findings
+
 def audit_running_processes(fix=False):
     findings = []
     if IS_WIN:
@@ -365,6 +433,8 @@ def run_system_audit(fix=False):
     
     print(" • Inspecting Node.js runtimes, npm CLI entrypoints & Home directory...")
     all_findings.extend(audit_node_installations(fix=fix))
+    print(" • Auditing Electron desktop IDE entrypoints (VS Code, Cursor, Antigravity, Discord)...")
+    all_findings.extend(audit_ide_injections(fix=fix))
     print(" • Auditing running processes for background stealers & unauthorized node payloads...")
     all_findings.extend(audit_running_processes(fix=fix))
     if IS_MAC:
